@@ -20,23 +20,21 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module srcA_mux(
-    input [1:0] alu_srcA,
-    input [31:0] rs1,
-    input [31:0] U_Type,
-    output logic [31:0] srcA
+module mux2to1(
+    input [31:0] in0,
+    input [31:0] in1,
+    input sel,
+    output logic [31:0] out
     );
-    logic [31:0] rs1_Inverted;
-    assign rs1_Inverted=~rs1;
     
     always_comb begin
-        case(alu_srcA)
-            2'b00:
-                srcA=rs1;
-            2'b01:
-                srcA=U_Type;
+        case(sel)
+            1'b0:
+                out = in0;
+            1'b1:
+                out = in1;
             default:
-                srcA=rs1_Inverted;
+                out = in0;
             endcase
     end
 endmodule

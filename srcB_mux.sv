@@ -20,27 +20,26 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module srcB_mux(
-    input [2:0] alu_srcB,
-    input [31:0] rs2,
-    input [31:0] I_Type,
-    input [31:0] S_Type,
-    input [31:0] PC,
-    input [31:0] csr_RD,
-    output logic [31:0] srcB
+module mux4to1(
+    input [1:0] sel,
+    input [31:0] in0,
+    input [31:0] in1,
+    input [31:0] in2,
+    input [31:0] in3,
+    output logic [31:0] out
     );
     always_comb begin
-        case(alu_srcB)
-            3'b000:
-                srcB=rs2;
-            3'b001:
-                srcB=I_Type;
-            3'b010:
-                srcB=S_Type;
-            3'b011:
-                srcB=PC;
+        case(sel)
+            2'b00:
+                out = in0;
+            2'b01:
+                out = in1;
+            2'b10:
+                out = in2;
+            2'b11:
+                out = in3;
             default:
-                srcB=csr_RD;
+                out = in0;
         endcase
     end
 endmodule

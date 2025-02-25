@@ -21,7 +21,7 @@
 
 
 module RegFile(
-    input en,
+    input w_en,
     input [4:0] adr1,
     input [4:0] adr2,
     input [4:0] w_adr,
@@ -37,7 +37,7 @@ logic [31:0] ram [0:31];
 // Initialize the memory to be all 0s
 initial begin
   int i;
-  for (i=0; i<31; i=i+1) begin
+  for (i=0; i<32; i=i+1) begin
     ram[i] = 0;
   end
 end
@@ -57,8 +57,8 @@ always_comb begin
         rs2=ram[adr2];
 end
 
-always_ff @(posedge clk) begin
-    if(en) 
+always_ff @(negedge clk) begin
+    if(w_en && w_adr != 0) 
        ram[w_adr]<=w_data; 
 end
 

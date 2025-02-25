@@ -23,17 +23,16 @@ module OTTER_Wrapper(
    output [7:0] CATHODES,
    output [3:0] ANODES
    );
-       
-    // INPUT PORT IDS ///////////////////////////////////////////////////////
-    // Right now, the only possible inputs are the switches
-    // In future labs you can add more MMIO, and you'll have
-    // to add constants here for the mux below
-    localparam SWITCHES_AD = 32'h11000000;
+   
+   // INPUT PORT IDS ///////////////////////////////////////////////////////
+    
+   localparam SWITCHES_AD = 32'h11000000;
            
-    // OUTPUT PORT IDS //////////////////////////////////////////////////////
-    // In future labs you can add more MMIO
-    localparam LEDS_AD    = 32'h11000020; //32'h11000020
-    localparam SSEG_AD    = 32'h11000040; //32'h11000040
+   // OUTPUT PORT IDS //////////////////////////////////////////////////////
+   // In future labs you can add more MMIO
+    
+   localparam LEDS_AD    = 32'h11000020; //32'h11000020
+   localparam SSEG_AD    = 32'h11000040; //32'h11000040
     
    // Signals for connecting OTTER_MCU to OTTER_wrapper /////////////////////
    logic clk_50 = 0;
@@ -43,16 +42,32 @@ module OTTER_Wrapper(
    
    // Registers for buffering outputs  /////////////////////////////////////
    logic [15:0] r_SSEG;
-    logic DB_BTN;
-    debounce_one_shot btnDB (.CLK(CLK), .BTN(BTNL), .DB_BTN(DB_BTN));
-   // Declare OTTER_CPU ////////////////////////////////////////////////////
-   OTTER_MCU CPU (.CPU_RST(s_reset), .CPU_INTR(DB_BTN), .CPU_CLK(clk_50),
-                  .CPU_IOBUS_OUT(IOBUS_out), .CPU_IOBUS_IN(IOBUS_in),
-                  .CPU_IOBUS_ADDR(IOBUS_addr), .CPU_IOBUS_WR(IOBUS_wr));
+   logic DB_BTN;
+   debounce_one_shot btnDB (
+                   .CLK(CLK), 
+                   .BTN(BTNL), 
+                   .DB_BTN(DB_BTN)
+                   );
+    
+   ////////////////////////////////////////////////////////////////////////
+   OTTER_MCU PipelineCPU (
+                  .RESET(s_reset),
+                  .INTR(DB_BTN), 
+                  .CLK(clk_50),
+                  .IOBUS_OUT(IOBUS_out), 
+                  .IOBUS_IN(IOBUS_in),
+                  .IOBUS_ADDR(IOBUS_addr), 
+                  .IOBUS_WR(IOBUS_wr)
+                  );
 
    // Declare Seven Segment Display /////////////////////////////////////////
-   SevSegDisp SSG_DISP (.DATA_IN(r_SSEG), .CLK(CLK), .MODE(1'b0),
-                       .CATHODES(CATHODES), .ANODES(ANODES));
+   SevSegDisp SSG_DISP (
+                  .DATA_IN(r_SSEG),
+                  .CLK(CLK),
+                  .MODE(1'b0),
+                  .CATHODES(CATHODES),
+                  .ANODES(ANODES)
+                  );
    
                            
    // Clock Divider to create 50 MHz Clock //////////////////////////////////

@@ -52,7 +52,7 @@
     input MEM_WE2,          // write enable.
     input [13:0] MEM_ADDR1, // Instruction Memory word Addr (Connect to PC[15:2])
     input [31:0] MEM_ADDR2, // Data Memory Addr
-    input [31:0] MEM_DIN2,  // Data to save
+    input [31:0] MEM_DIN2,  // Data to save     
     input [1:0] MEM_SIZE,   // 0-Byte, 1-Half, 2-Word
     input MEM_SIGN,         // 1-unsigned 0-signed
     input [31:0] IO_IN,     // Data from IO
@@ -63,16 +63,16 @@
     
     logic [13:0] wordAddr2;
     logic [31:0] memReadWord, ioBuffer, memReadSized;
-    logic [1:0] byteOffset;
+    logic [1:0] byteOffset; 
     logic weAddrValid;      // active when saving (WE) to valid memory address
        
     (* rom_style="{distributed | block}" *)
     (* ram_decomp = "power" *) logic [31:0] memory [0:16383];
-    
+     
     initial begin
-        $readmemh("Test_All.mem", memory, 0, 16383);
+        $readmemh("simple_test5.mem", memory, 0, 16383);
     end
-    
+       
     assign wordAddr2 = MEM_ADDR2[15:2];
     assign byteOffset = MEM_ADDR2[1:0];     // byte offset of memory address
          

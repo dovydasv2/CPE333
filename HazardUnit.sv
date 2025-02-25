@@ -62,27 +62,31 @@ module HazardUnit(
     if (1) begin   // Cannot override x0, so no hazard if rd is 0
     
     // Check one instruction above
-        if (rs1_in == ex_rd && ex_rd != 0 && ex_rd_reg_write && !imm_A) begin // RAW 1 instruction above
+        if (rs1_in == ex_rd && ex_rd != 0 && (ex_rd_reg_write || store) && !imm_A) begin // RAW 1 instruction above
             alu_sel_1 = 1;
             if (load) stall = 1;
-        end
-        if (rs2_in == ex_rd && ex_rd_reg_write && ex_rd != 0 && !imm_B) begin
+            // Check 2 instructions above
+        end else if (rs1_in == mem_rd && mem_rd_reg_write && mem_rd != 0 && !imm_A && alu_sel_1 != 1) alu_sel_1 = 2; 
+        
+        
+        if (rs2_in == ex_rd && (ex_rd_reg_write || store) && ex_rd != 0 && (!imm_B || store)) begin
             forward_rs2 = 1;
             if (!imm_B) begin
                 alu_sel_2 = 1;
                 if (load) stall = 1;
             end
-        end
-        
-        
-    // Check 2 instructions above
-        if (rs1_in == mem_rd && mem_rd_reg_write && mem_rd != 0 && !imm_A && alu_sel_1 != 1) alu_sel_1 = 2; 
-        if (rs2_in == mem_rd && mem_rd_reg_write && mem_rd != 0 && alu_sel_2 != 1) begin
+            // Check 2 instructions above
+        end else if (rs2_in == mem_rd && (mem_rd_reg_write || store) && mem_rd != 0 && alu_sel_2 != 1) begin
             forward_rs2 = 2;
             if (!imm_B) begin
                 alu_sel_2 = 2;
             end
         end
+        
+        
+    
+        
+        
            
     end
     
@@ -96,7 +100,6 @@ module HazardUnit(
     else if (jal_taken) pc_mux_out = 3;
     else if (jalr_taken) pc_mux_out = 1;
     else if (jal_taken || jalr_taken) flush_if_de = 1;
-    //else if (branch) pc_mux_out = 2;
     else pc_mux_out = 0;
     
     if (branch) begin

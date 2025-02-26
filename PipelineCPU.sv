@@ -47,7 +47,7 @@ module OTTER_MCU(input CLK,
     logic [1:0] pc_sel, de_ex_rf_wr_sel, de_ex_size, forward_A_SEL, forward_B_SEL, ex_mem_rf_wr_sel, ex_mem_size, mem_wb_rf_wr_sel, jalr_sel, forward_rs2;
     logic pcWrite,ex_mem_memRDEN2, ex_mem_regWrite, ex_mem_memWE2,br_eq, br_lt, br_ltu,de_ex_flushed,flush_de_ex, flush_if_de,stall,if_de_flushed, flush_next_if_de;
     logic mem_wb_reg_write,de_ex_jump, de_ex_branch, de_ex_regWrite, de_ex_memWE2, de_ex_memRDEN2, de_store, de_ex_store,imm_A, imm_B,de_ex_sign, jal_taken, jalr_taken, branch_taken, de_load, de_ex_load, ex_mem_load;
-    logic ex_mem_sign, mem_wb_regWrite;
+    logic ex_mem_sign, mem_wb_regWrite, de_ex_stalled;
     logic ex_mem_aluRes = 0;
    
 //==== Instruction Fetch ===========================================
@@ -197,6 +197,8 @@ module OTTER_MCU(input CLK,
                .branch(branch_taken),
                .store(de_ex_store),
                .forward_rs2(forward_rs2),
+               .de_ex_stalled(de_ex_stalled),
+               .de_ex_load(de_ex_load),
                .imm_A(imm_A),
                .imm_B(imm_B),
                .pc_mux_out(pc_sel),
@@ -211,7 +213,8 @@ module OTTER_MCU(input CLK,
     
     
     always_ff @(posedge CLK) begin
-        
+        if (!stall) begin
+            de_ex_stalled <= 0;
             // Assign used values
             de_ex_rs1_addr <= if_de_ir[19:15];
             de_ex_rs1 <= de_used_rs1;
@@ -255,7 +258,11 @@ module OTTER_MCU(input CLK,
             
             // Assign register addresses
             de_ex_rd_addr <= if_de_ir[11:7];
-        
+            
+            
+        end else begin
+            de_ex_stalled <= 1;
+            end
         
     end
      
@@ -375,7 +382,7 @@ module OTTER_MCU(input CLK,
                 .MEM_ADDR2(mem_addr2),
                 .MEM_DIN2(ex_mem_rs2),
                 .MEM_WRITE2(mem_WE2),
-                .MEM_READ1(memRead1),
+                .MEM_READ1(memRead1 && !stall),
                 .MEM_READ2(mem_RDEN2),
                 .MEM_DOUT1(IR),
                 .MEM_DOUT2(mem_dout2),

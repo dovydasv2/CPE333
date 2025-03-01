@@ -49,17 +49,19 @@ module OTTER_MCU(input CLK,
     logic mem_wb_reg_write,de_ex_jump, de_ex_branch, de_ex_regWrite, de_ex_memWE2, de_ex_memRDEN2, de_store, de_ex_store,imm_A, imm_B,de_ex_sign, jal_taken, jalr_taken, branch_taken, de_load, de_ex_load, ex_mem_load;
     logic ex_mem_sign, mem_wb_regWrite, de_ex_stalled;
     logic ex_mem_aluRes = 0;
+    logic cache_stall;
    
 //==== Instruction Fetch ===========================================
 
-     assign if_de_ir = IR;
-     assign pcWrite = ~stall; 	
+     assign pcWrite = ~(stall || cache_stall); 	
      assign memRead1 = 1'b1; 	//Fetch new instruction every cycle
      
      always_ff @(posedge CLK) begin
-                if (!stall) begin
+                if_de_ir <= IR;
+                if (!(stall||cache_stall)) begin
                     if_de_pc <= pc;
                     if_de_pc_plus4 <= pc+4;
+                    
                 end
                 if (flush_next_if_de || flush_de_ex) if_de_flushed = 1;
                 else if_de_flushed = 0;
@@ -213,7 +215,7 @@ module OTTER_MCU(input CLK,
     
     
     always_ff @(posedge CLK) begin
-        if (!stall) begin
+        if (!(stall||cache_stall)) begin
             de_ex_stalled <= 0;
             // Assign used values
             de_ex_rs1_addr <= if_de_ir[19:15];
@@ -384,7 +386,7 @@ module OTTER_MCU(input CLK,
                 .MEM_WRITE2(mem_WE2),
                 .MEM_READ1(memRead1 && !stall),
                 .MEM_READ2(mem_RDEN2),
-                .MEM_DOUT1(IR),
+                .MEM_DOUT1(),
                 .MEM_DOUT2(mem_dout2),
                 .IO_IN(IOBUS_IN),
                 .IO_WR(IOBUS_WR),
@@ -416,5 +418,48 @@ module OTTER_MCU(input CLK,
                .sel(mem_wb_rf_wr_sel),
                .out(mem_to_reg_mux_out)
                );
+            
+//==== THE ALMIGHTY L1 CACHE ========================================
+    wire [31:0] w0, w1, w2, w3, w4, w5, w6, w7, rd;
+    wire update, hit, miss;
+    imem imem(
+        .a(pc),
+        .w0(w0),
+        .w1(w1),
+        .w2(w2),
+        .w3(w3),
+        .w4(w4),
+        .w5(w5),
+        .w6(w6),
+        .w7(w7)
+      );
+      
+    Cache Cache(
+        .PC(pc),
+        .CLK(CLK),
+        .update(update),
+        .w0(w0),
+        .w1(w1),
+        .w2(w2),
+        .w3(w3),
+        .w4(w4),
+        .w5(w5),
+        .w6(w6),
+        .w7(w7),
+        .rd(IR),
+        .hit(hit),
+        .miss(miss)
+      );
+      
+    CacheFSM CacheFSM(
+        .hit(hit),
+        .miss(miss),
+        .CLK(CLK),
+        .RST(RST),
+        .update(update),
+        .pc_stall(cache_stall)
+      );     
+         
+            
             
 endmodule

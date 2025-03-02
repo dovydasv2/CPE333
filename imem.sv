@@ -34,18 +34,21 @@ module imem(
 
 //mem array
  logic [31:0] ram[0:16383];
+ logic [29:0] actual_address;
+ 
+ assign actual_address = {a[31:5], 3'b000};
  
  // Initialize mem from file
  initial $readmemh("Test_All.mem", ram, 0, 16383);
  
  //changed memory so it does output 8 words
- assign w0 = ram[a[31:2]];
- assign w1 = ram[a[31:2]+1];
- assign w2 = ram[a[31:2]+2];
- assign w3 = ram[a[31:2]+3];
- assign w4 = ram[a[31:2]+4];
- assign w5 = ram[a[31:2]+5];
- assign w6 = ram[a[31:2]+6];
- assign w7 = ram[a[31:2]+7];
+ assign w0 = ram[actual_address];
+ assign w1 = ram[actual_address+1];
+ assign w2 = ram[actual_address+2];
+ assign w3 = ram[actual_address+3];
+ assign w4 = ram[actual_address+4];
+ assign w5 = ram[actual_address+5];
+ assign w6 = ram[actual_address+6];
+ assign w7 = ram[actual_address+7];
 endmodule
 

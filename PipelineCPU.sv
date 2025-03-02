@@ -57,11 +57,14 @@ module OTTER_MCU(input CLK,
      assign memRead1 = 1'b1; 	//Fetch new instruction every cycle
      
      always_ff @(posedge CLK) begin
-                if_de_ir <= IR;
+                
                 if (!(stall||cache_stall)) begin
+                    if_de_ir <= IR;
                     if_de_pc <= pc;
                     if_de_pc_plus4 <= pc+4;
-                    
+                end else begin
+                // NOP
+                   // if_de_ir <= 8'h00000013;
                 end
                 if (flush_next_if_de || flush_de_ex) if_de_flushed = 1;
                 else if_de_flushed = 0;
@@ -215,7 +218,7 @@ module OTTER_MCU(input CLK,
     
     
     always_ff @(posedge CLK) begin
-        if (!(stall||cache_stall)) begin
+        if (!(stall || cache_stall)) begin
             de_ex_stalled <= 0;
             // Assign used values
             de_ex_rs1_addr <= if_de_ir[19:15];
@@ -264,6 +267,9 @@ module OTTER_MCU(input CLK,
             
         end else begin
             de_ex_stalled <= 1;
+            de_ex_rs1_addr <= 0;
+            de_ex_rs2_addr <= 0;
+            de_ex_rd_addr <= 0;
             end
         
     end
@@ -455,7 +461,7 @@ module OTTER_MCU(input CLK,
         .hit(hit),
         .miss(miss),
         .CLK(CLK),
-        .RST(RST),
+        .RST(RESET),
         .update(update),
         .pc_stall(cache_stall)
       );     

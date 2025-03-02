@@ -42,7 +42,7 @@ parameter NUM_BLOCKS = 16;
 parameter BLOCK_SIZE = 8;
 parameter INDEX_SIZE = 4;
 parameter WORD_OFFSET_SIZE = 3;
-parameter BYTE_OFFSET = 0;
+parameter BYTE_OFFSET = 2;
 parameter TAG_SIZE = 32 - INDEX_SIZE - WORD_OFFSET_SIZE - BYTE_OFFSET;
 
 //Internal Signals
@@ -73,9 +73,9 @@ assign cache_tag = tags[index];
 assign pc_offset = PC[4:2];
 assign pc_tag = PC[31:9];
 assign hit = (validity && (cache_tag == pc_tag));
-always_ff @ (posedge CLK) begin
-    miss <= !hit;
-end
+//always_ff @ (posedge CLK) begin
+assign miss = !hit;
+//end
 //Read data
 always_comb begin
     rd = 32'h00000013; //nop
@@ -96,6 +96,7 @@ if(update) begin
     data[index][6] <= w6;
     data[index][7] <= w7;
     valid_bits[index] <= 1'b1;
+    tags[index] <= pc_tag;
     end
 end
 

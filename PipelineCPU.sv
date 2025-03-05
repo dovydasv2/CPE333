@@ -47,33 +47,29 @@ module OTTER_MCU(input CLK,
     logic [1:0] pc_sel, de_ex_rf_wr_sel, de_ex_size, forward_A_SEL, forward_B_SEL, ex_mem_rf_wr_sel, ex_mem_size, mem_wb_rf_wr_sel, jalr_sel, forward_rs2;
     logic pcWrite,ex_mem_memRDEN2, ex_mem_regWrite, ex_mem_memWE2,br_eq, br_lt, br_ltu,de_ex_flushed,flush_de_ex, flush_if_de,stall,if_de_flushed, flush_next_if_de;
     logic mem_wb_reg_write,de_ex_jump, de_ex_branch, de_ex_regWrite, de_ex_memWE2, de_ex_memRDEN2, de_store, de_ex_store,imm_A, imm_B,de_ex_sign, jal_taken, jalr_taken, branch_taken, de_load, de_ex_load, ex_mem_load;
-    logic ex_mem_sign, mem_wb_regWrite, de_ex_stalled;
+    logic ex_mem_sign, mem_wb_regWrite, de_ex_stalled, ex_mem_stalled, mem_out_stalled;
     logic ex_mem_aluRes = 0;
-    logic cache_stall;
+    logic cache_stall, if_flushed;
    
 //==== Instruction Fetch ===========================================
 
      assign pcWrite = ~(stall || cache_stall); 	
      assign memRead1 = 1'b1; 	//Fetch new instruction every cycle
+     always_ff @(posedge CLK) begin
+            if (flush_if_de) if_flushed = 1;
+            else if_flushed = 0;
+     end
      
      always_ff @(posedge CLK) begin
                 
-                if (!(stall||cache_stall)) begin
+                if (!(stall || cache_stall)) begin
+                    if_de_flushed <= if_flushed;
                     if_de_ir <= IR;
                     if_de_pc <= pc;
                     if_de_pc_plus4 <= pc+4;
-                end else begin
-                // NOP
-                   // if_de_ir <= 8'h00000013;
-                end
-                if (flush_next_if_de || flush_de_ex) if_de_flushed = 1;
-                else if_de_flushed = 0;
+                end 
      end
      
-     always_ff @(posedge CLK) begin
-        if (flush_if_de) flush_next_if_de = 1;
-        else flush_next_if_de = 0;
-     end
      
      
 //==== Instruction Decode ===========================================
@@ -83,6 +79,9 @@ module OTTER_MCU(input CLK,
     assign stype = {{21{if_de_ir[31]}},if_de_ir[30:25],if_de_ir[11:7]};
     assign btype = {{20{if_de_ir[31]}},if_de_ir[7],if_de_ir[30:25],if_de_ir[11:8],1'b0};
     assign jtype = {{12{if_de_ir[31]}},if_de_ir[19:12],if_de_ir[20],if_de_ir[30:21],1'b0};
+    
+    logic [31:0] ex_rs1, ex_rs2;
+    logic cache_stall_plus_one;
     
     CU_DCDR Decoder (
                     .ir_opcode_dcdr(if_de_ir[6:0]),
@@ -103,7 +102,7 @@ module OTTER_MCU(input CLK,
     
     
     RegFile RegFile (
-                    .w_en(mem_wb_reg_write),
+                    .w_en(mem_wb_reg_write & !cache_stall_plus_one),
                     .adr1(if_de_ir[19:15]),
                     .adr2(if_de_ir[24:20]),
                     .w_adr(mem_wb_rd_addr),
@@ -113,21 +112,12 @@ module OTTER_MCU(input CLK,
                     .rs2(rs2)
                     );
     
-    mux2to1 DE_ALU_A_MUX (
-                      .in0(rs1),
-                      .in1(utype),
-                      .sel(alu_srca_sel[0]),
-                      .out(de_used_rs1)
-                      );
-                      
-    mux4to1 DE_ALU_B_MUX (
-                      .in0(rs2),
-                      .in1(itype),
-                      .in2(stype),
-                      .in3(if_de_pc),
-                      .sel(alu_srcb_sel[1:0]),
-                      .out(de_used_rs2)
-                      );
+    
+    
+    
+    always_ff @(posedge CLK) begin
+        cache_stall_plus_one <= cache_stall;
+    end
     
     // Branch conditional generator
     always_comb begin
@@ -176,7 +166,7 @@ module OTTER_MCU(input CLK,
     always_comb begin
     jal_taken = 0;
     jalr_taken = 0;
-    if (de_jump == 1 && !flush_next_if_de) begin
+    if (de_jump == 1 && !if_flushed && !if_de_flushed) begin
              if (if_de_ir[6:0] == 7'b1101111) begin
              // JAL opcode
                 jal_taken = 1;
@@ -203,6 +193,9 @@ module OTTER_MCU(input CLK,
                .store(de_ex_store),
                .forward_rs2(forward_rs2),
                .de_ex_stalled(de_ex_stalled),
+               .ex_mem_stalled(ex_mem_stalled),
+               .mem_out_stalled(mem_out_stalled),
+               //.cache_stall(cache_stall),
                .de_ex_load(de_ex_load),
                .imm_A(imm_A),
                .imm_B(imm_B),
@@ -216,62 +209,75 @@ module OTTER_MCU(input CLK,
                .alu_sel_2(forward_B_SEL)
     );
     
+    logic de_ex_alu_a_sel;
+    logic [1:0] de_ex_alu_b_sel;
+    logic stalled_for_one;
     
     always_ff @(posedge CLK) begin
-        if (!(stall || cache_stall)) begin
-            de_ex_stalled <= 0;
-            // Assign used values
-            de_ex_rs1_addr <= if_de_ir[19:15];
-            de_ex_rs1 <= de_used_rs1;
-            de_ex_alu_b <= de_used_rs2;
-            de_ex_rs2 <= rs2;
-            de_ex_rs2_addr <= if_de_ir[24:20];
-            de_ex_pc <= if_de_pc;
-            de_ex_pc_plus4 <= if_de_pc_plus4;
-            de_ex_opcode <= if_de_ir[6:0];
-            de_ex_func3 <= if_de_ir[14:12];
-            de_ex_sign <= if_de_ir[14];
-            de_ex_size <= if_de_ir[13:12];
-            de_ex_load <= de_load;
-            de_ex_store <= de_store;
-            if (alu_srca_sel != 0) imm_A <= 1;
-            else imm_A <= 0;
+    
+            // !(de_branch || de_ex_branch) && !stall
+            if (!cache_stall && !stall) begin
+                // Assign used values
+                de_ex_rs1 <= rs1;
+                de_ex_rs2 <= rs2;
+                de_ex_rs1_addr <= if_de_ir[19:15];
+                de_ex_rs2_addr <= if_de_ir[24:20];
+                de_ex_pc <= if_de_pc;
+                de_ex_pc_plus4 <= if_de_pc_plus4;
+                de_ex_opcode <= if_de_ir[6:0];
+                de_ex_func3 <= if_de_ir[14:12];
+                de_ex_sign <= if_de_ir[14];
+                de_ex_size <= if_de_ir[13:12];
+                de_ex_load <= de_load;
+                de_ex_store <= de_store;
+                if (alu_srca_sel != 0) imm_A <= 1;
+                else imm_A <= 0;
+                
+                if (alu_srcb_sel != 0) imm_B <= 1;
+                else imm_B <= 0;
+                
+                // Assign control values
+                de_ex_branch <= de_branch;
+                if (if_de_flushed || flush_de_ex) begin
+                    de_ex_regWrite <= 0;
+                    de_ex_memWE2 <= 0;
+                    de_ex_flushed <= 1;
+                end
+                else begin
+                    de_ex_regWrite <= de_regWrite;
+                    de_ex_memWE2 <= de_memWE2;
+                    de_ex_flushed <= 0;
+                end
+                de_ex_memRDEN2 <= de_memRDEN2;
+                de_ex_alu_fun <= de_alu_fun;
+                de_ex_rf_wr_sel <= de_rf_wr_sel;
+                
+                de_ex_alu_a_sel <= alu_srca_sel[0];
+                de_ex_alu_b_sel <= alu_srcb_sel[1:0];
+                
+                // Assign immediate values in DE_EX buffer
+                de_ex_itype <= itype;
+                de_ex_btype <= btype;
+                de_ex_jtype <= jtype;
+                de_ex_utype <= utype;
+                de_ex_stype <= stype;
+                
+                // Assign register addresses
+                de_ex_rd_addr <= if_de_ir[11:7];
+                
+                
+            end
             
-            if (alu_srcb_sel != 0) imm_B <= 1;
-            else imm_B <= 0;
-            
-            // Assign control values
-            de_ex_branch <= de_branch;
-            if (if_de_flushed) begin
-                de_ex_regWrite <= 0;
-                de_ex_memWE2 <= 0;
-                de_ex_flushed <= 1;
+            if (stall) begin
+                de_ex_stalled <= 1;
             end
             else begin
-                de_ex_regWrite <= de_regWrite;
-                de_ex_memWE2 <= de_memWE2;
-                de_ex_flushed <= 0;
+                de_ex_stalled <= 0;
             end
-            de_ex_memRDEN2 <= de_memRDEN2;
-            de_ex_alu_fun <= de_alu_fun;
-            de_ex_rf_wr_sel <= de_rf_wr_sel;
-            
-            // Assign immediate values in DE_EX buffer
-            de_ex_itype <= itype;
-            de_ex_btype <= btype;
-            de_ex_jtype <= jtype;
-            
-            // Assign register addresses
-            de_ex_rd_addr <= if_de_ir[11:7];
             
             
-        end else begin
-            de_ex_stalled <= 1;
-            de_ex_rs1_addr <= 0;
-            de_ex_rs2_addr <= 0;
-            de_ex_rd_addr <= 0;
-            end
-        
+            
+            
     end
      
     
@@ -280,6 +286,24 @@ module OTTER_MCU(input CLK,
 //==== Execute ======================================================
 
     assign ex_jump = de_ex_jump;
+    wire [31:0] ALU_A, ALU_B;
+    
+    // Move these into the execute stage
+    mux2to1 DE_ALU_A_MUX (
+                      .in0(de_ex_rs1),
+                      .in1(de_ex_utype),
+                      .sel(de_ex_alu_a_sel),
+                      .out(ALU_A)
+                      );
+                      
+    mux4to1 DE_ALU_B_MUX (
+                      .in0(de_ex_rs2),
+                      .in1(de_ex_itype),
+                      .in2(de_ex_stype),
+                      .in3(de_ex_pc),
+                      .sel(de_ex_alu_b_sel),
+                      .out(ALU_B)
+                      );
      
     BRANCH_ADDR_GEN BAG (
                    .J_TYPE_IMM(jtype),
@@ -311,7 +335,7 @@ module OTTER_MCU(input CLK,
                     );
                     
     mux4to1 ALU_forward_A (
-                    .in0 (de_ex_rs1),
+                    .in0 (ALU_A),
                     .in1 (ex_mem_result),
                     .in2 (mem_to_reg_mux_out),
                     .in3 (0),
@@ -320,7 +344,7 @@ module OTTER_MCU(input CLK,
                     );
     
     mux4to1 ALU_forward_B (
-                    .in0 (de_ex_alu_b),
+                    .in0 (ALU_B),
                     .in1 (ex_mem_result),
                     .in2 (mem_to_reg_mux_out),
                     .in3 (0),
@@ -353,21 +377,23 @@ module OTTER_MCU(input CLK,
         );
         
     always_ff @(posedge CLK) begin
-        ex_mem_result <= ex_result;
-        ex_mem_rs2 <= ex_forwarded_rs2;
-        ex_mem_load <= de_ex_load;
-        
-        ex_mem_memRDEN2 <= de_ex_memRDEN2;
-        ex_mem_regWrite <= de_ex_regWrite;
-        ex_mem_rf_wr_sel <= de_ex_rf_wr_sel;
-        ex_mem_memWE2 <= de_ex_memWE2;
-        
-        ex_mem_size <= de_ex_size;
-        ex_mem_sign <= de_ex_sign;
-        
-        ex_mem_pc_plus4 <= de_ex_pc;
-        ex_mem_rd_addr <= de_ex_rd_addr;
-        
+        if(!cache_stall) begin
+            ex_mem_stalled <= de_ex_stalled;
+            ex_mem_result <= ex_result;
+            ex_mem_rs2 <= ex_forwarded_rs2;
+            ex_mem_load <= de_ex_load;
+            
+            ex_mem_memRDEN2 <= de_ex_memRDEN2;
+            ex_mem_regWrite <= de_ex_regWrite;
+            ex_mem_rf_wr_sel <= de_ex_rf_wr_sel;
+            ex_mem_memWE2 <= de_ex_memWE2;
+            
+            ex_mem_size <= de_ex_size;
+            ex_mem_sign <= de_ex_sign;
+            
+            ex_mem_pc_plus4 <= de_ex_pc;
+            ex_mem_rd_addr <= de_ex_rd_addr;
+        end else ex_mem_memRDEN2 <= 0;
     end
 
 
@@ -401,13 +427,15 @@ module OTTER_MCU(input CLK,
                 );
     
     always_ff @(posedge CLK) begin
-        mem_wb_rd_addr <= ex_mem_rd_addr;
-        mem_wb_pc_plus4 <= ex_mem_pc_plus4;
-        mem_wb_result <= ex_mem_result;
-        
-        mem_wb_rf_wr_sel <= ex_mem_rf_wr_sel;
-        mem_wb_regWrite <= ex_mem_regWrite;
-        
+        if (!cache_stall) begin
+            mem_wb_rd_addr <= ex_mem_rd_addr;
+            mem_wb_pc_plus4 <= ex_mem_pc_plus4;
+            mem_wb_result <= ex_mem_result;
+            
+            mem_wb_rf_wr_sel <= ex_mem_rf_wr_sel;
+            mem_wb_regWrite <= ex_mem_regWrite;
+            mem_out_stalled <= ex_mem_stalled;
+        end
     end
  
      

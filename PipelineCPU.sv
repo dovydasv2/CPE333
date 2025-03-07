@@ -53,7 +53,7 @@ module OTTER_MCU(input CLK,
    
 //==== Instruction Fetch ===========================================
 
-     assign pcWrite = ~(stall || cache_stall); 	
+     assign pcWrite = ~(stall || cache_stall || data_cache_stall); 	
      assign memRead1 = 1'b1; 	//Fetch new instruction every cycle
      always_ff @(posedge CLK) begin
             if (flush_if_de) if_flushed = 1;
@@ -62,7 +62,7 @@ module OTTER_MCU(input CLK,
      
      always_ff @(posedge CLK) begin
                 
-                if (!(stall || cache_stall)) begin
+                if (!(stall || cache_stall || data_cache_stall)) begin
                     if_de_flushed <= if_flushed;
                     if_de_ir <= IR;
                     if_de_pc <= pc;
@@ -116,7 +116,7 @@ module OTTER_MCU(input CLK,
     
     
     always_ff @(posedge CLK) begin
-        cache_stall_plus_one <= cache_stall;
+        cache_stall_plus_one <= cache_stall || data_cache_stall;
     end
     
     // Branch conditional generator
@@ -216,7 +216,7 @@ module OTTER_MCU(input CLK,
     always_ff @(posedge CLK) begin
     
             // !(de_branch || de_ex_branch) && !stall
-            if (!cache_stall && !stall) begin
+            if (!cache_stall && !stall && !data_cache_stall) begin
                 // Assign used values
                 de_ex_rs1 <= rs1;
                 de_ex_rs2 <= rs2;
@@ -377,7 +377,7 @@ module OTTER_MCU(input CLK,
         );
         
     always_ff @(posedge CLK) begin
-        if(!cache_stall) begin
+        if(!cache_stall && !data_cache_stall) begin
             ex_mem_stalled <= de_ex_stalled;
             ex_mem_result <= ex_result;
             ex_mem_rs2 <= ex_forwarded_rs2;
@@ -412,11 +412,10 @@ module OTTER_MCU(input CLK,
     logic [127:0] mem_to_cache, cache_to_mem;
 
     logic data_hit, dirty, valid, data_miss;
-    logic data_update;
+    logic data_update, data_cache_stall, mem_wb_enable;
     
     logic mem_addr_sel;
     logic [31:0] mem_module_addr, mem_wb_addr;
-    logic new_mem_we, new_mem_re;
 
     mux2to1 Cache_mem_mux(
                 .in0(mem_addr2),
@@ -444,6 +443,18 @@ module OTTER_MCU(input CLK,
 
     // Add a mux controlled by the fsm to have the address going into the memory module be for write-back or update
 
+//==== Stuff for Leb 5 ========================================
+    Data_Cache_FSM Data_Cache_FSM(
+                .CLK(CLK),
+                .hit(hit),
+                .miss(data_miss),
+                .dirty_wb(mem_wb_enable),
+                .RST(RESET),
+                .update(data_update),
+                .pc_stall(data_cache_stall),
+                .mem_addr_sel(mem_addr_sel)
+    )
+
     logic [31:0] cache_data_out;
     
     Data_Cache Data_Cache(
@@ -463,6 +474,7 @@ module OTTER_MCU(input CLK,
                 .data_out(cache_data_out),
                 .MM_data_out(cache_to_mem),
                 .mem_wb_addr(mem_wb_addr),
+                .mem_wb_enable(mem_wb_enable),
                 .hit(hit),
                 .dirty(dirty),
                 .valid(valid),
@@ -470,7 +482,7 @@ module OTTER_MCU(input CLK,
                 );
     
     always_ff @(posedge CLK) begin
-        if (!cache_stall) begin
+        if (!cache_stall && !data_cache_stall) begin
             mem_wb_rd_addr <= ex_mem_rd_addr;
             mem_wb_pc_plus4 <= ex_mem_pc_plus4;
             mem_wb_result <= ex_mem_result;

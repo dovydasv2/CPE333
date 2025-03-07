@@ -4,9 +4,9 @@ module Data_Cache (
     input logic read,                 // Read enable signal 
     input logic update,               // Update signal for handling misses 
     input logic RESET,
-    input logic [31:0] address
-    input logic [1:0] size            // Size to output or input:
-    input logic sign                  // Sign extend? 1:yes, 0:no
+    input logic [31:0] address,
+    input logic [1:0] size,            // Size to output or input:
+    input logic sign,                  // Sign extend? 1:yes, 0:no
     input logic [127:0] MM_data_in,   // Data from main memory (4 words) 
     input logic [31:0] data_in,      // Input data for I/O operations 
     input logic [31:0] IO_bus_in,
@@ -146,14 +146,14 @@ end
         end 
     end 
      
-
+logic [31:0] output_word;
 
      // Write Logic
 always_ff @(posedge CLK) begin 
     IO_WR = 0;
     IO_bus_out = 0;
     IO_out_addr = 0;
-    logic [31:0] output_word;
+    
 
     if (write && address >= 32'h11000000) begin
         IO_WR = 1;
@@ -194,7 +194,7 @@ end
  
     // Cache Miss Handling (LRU Replacement) 
     always_ff @(posedge update) begin 
-        Mem_WE = 0;
+        mem_writeback_en = 0;
         if (!hit_internal) begin 
             // Find LRU block to replace 
             lru_block_index = 0; 

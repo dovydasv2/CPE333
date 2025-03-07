@@ -422,7 +422,7 @@ module OTTER_MCU(input CLK,
                 .in1(mem_wb_addr),
                 .sel(mem_addr_sel),
                 .out(mem_module_addr)
-                )
+                );
     
     OTTER_mem_byte Mem(
                 .MEM_CLK(CLK),
@@ -433,7 +433,7 @@ module OTTER_MCU(input CLK,
                 //.MEM_READ1(memRead1 && !stall),
                 .MEM_READ2(~mem_addr_sel),
                 //.MEM_DOUT1(),
-                .MEM_DOUT2(mem_to_cache),
+                .MEM_DOUT2(mem_to_cache)
                 //.IO_IN(IOBUS_IN),
                 //.IO_WR(IOBUS_WR),
                 //.MEM_SIZE(size),
@@ -446,14 +446,14 @@ module OTTER_MCU(input CLK,
 //==== Stuff for Leb 5 ========================================
     Data_Cache_FSM Data_Cache_FSM(
                 .CLK(CLK),
-                .hit(hit),
+                .hit(data_hit),
                 .miss(data_miss),
                 .dirty_wb(mem_wb_enable),
                 .RST(RESET),
                 .update(data_update),
                 .pc_stall(data_cache_stall),
                 .mem_addr_sel(mem_addr_sel)
-    )
+    );
 
     logic [31:0] cache_data_out;
     
@@ -475,7 +475,7 @@ module OTTER_MCU(input CLK,
                 .MM_data_out(cache_to_mem),
                 .mem_wb_addr(mem_wb_addr),
                 .mem_wb_enable(mem_wb_enable),
-                .hit(hit),
+                .hit(data_hit),
                 .dirty(dirty),
                 .valid(valid),
                 .miss(data_miss)

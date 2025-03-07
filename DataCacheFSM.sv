@@ -1,11 +1,11 @@
 module Data_Cache_FSM(
     input hit,              // Hit from cache
     input miss,             // Cache miss
-    input dirty_wb          // Block is dirty, signalded by cache and we wb
+    input dirty_wb,          // Block is dirty, signalded by cache and we wb
     input CLK, 
     input RST, 
     output logic update,    // Update signal
-    output logic pc_stall   // Stall signal
+    output logic pc_stall,   // Stall signal
     output mem_addr_sel     // Selects memory adress in MUX based on wb
                             // 1=wb state, 0=mem read state
 );

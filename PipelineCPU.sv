@@ -405,11 +405,12 @@ module OTTER_MCU(input CLK,
     assign mem_addr2 = ex_mem_result;
     assign size = ex_mem_size;
     assign sign = ex_mem_sign;
-    assign IOBUS_ADDR = ex_mem_result;
-    assign IOBUS_OUT = ex_mem_rs2;
+    assign IOBUS_ADDR = cache_IO_addr_out;
+    assign IOBUS_OUT = cache_IOBUS_out;
     //assign mem_wb_dout2 = mem_dout2;
 
     logic [127:0] mem_to_cache, cache_to_mem;
+    logic [31:0] cache_IOBUS_out, cache_IO_addr_out;
 
     logic data_hit, dirty, valid, data_miss;
     logic data_update, data_cache_stall, mem_wb_enable;
@@ -469,8 +470,9 @@ module OTTER_MCU(input CLK,
                 .MM_data_in(mem_to_cache),
                 .data_in(ex_mem_rs2),
                 .IO_bus_in(IOBUS_IN),
-                .IO_bus_out(IOBUS_OUT),
+                .IO_bus_out(cache_IOBUS_out),
                 .IO_WR(IOBUS_WR),
+                .IO_out_addr(cache_IO_addr_out),
                 .data_out(cache_data_out),
                 .MM_data_out(cache_to_mem),
                 .mem_wb_addr(mem_wb_addr),

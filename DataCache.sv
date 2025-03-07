@@ -111,33 +111,33 @@ end
             // Slice to have proper output
             case({sign,size})
                 0: case(byte_offset[1:0])
-                        3:  data_out = {{24{word_out[31]}},word_out[31:24]};      // lb  (signed)
-                        2:  data_out = {{24{word_out[23]}},word_out[23:16]};
-                        1:  data_out = {{24{word_out[15]}},word_out[15:8]};
-                        0:  data_out = {{24{word_out[7]}},word_out[7:0]};
+                        3:  data_out = {{24{cache[index][hit_block_index].words[word_offset][31]}},cache[index][hit_block_index].words[word_offset][31:24]};      // lb  (signed)
+                        2:  data_out = {{24{cache[index][hit_block_index].words[word_offset][23]}},cache[index][hit_block_index].words[word_offset][23:16]};
+                        1:  data_out = {{24{cache[index][hit_block_index].words[word_offset][15]}},cache[index][hit_block_index].words[word_offset][15:8]};
+                        0:  data_out = {{24{cache[index][hit_block_index].words[word_offset][7]}},cache[index][hit_block_index].words[word_offset][7:0]};
                    endcase
                         
                 1: case(byte_offset[1:0])
-                        2: data_out = {{16{word_out[31]}},word_out[31:16]}; // lh   (signed)
-                        1: data_out = {{16{word_out[23]}},word_out[23:8]};
-                        0: data_out = {{16{word_out[15]}},word_out[15:0]};
+                        2: data_out = {{16{cache[index][hit_block_index].words[word_offset][31]}},cache[index][hit_block_index].words[word_offset][31:16]}; // lh   (signed)
+                        1: data_out = {{16{cache[index][hit_block_index].words[word_offset][23]}},cache[index][hit_block_index].words[word_offset][23:8]};
+                        0: data_out = {{16{cache[index][hit_block_index].words[word_offset][15]}},cache[index][hit_block_index].words[word_offset][15:0]};
                    endcase
 
                 2: case(byte_offset[1:0])
-                        0: data_out = word_out;      // lw     
+                        0: data_out = cache[index][hit_block_index].words[word_offset];      // lw     
                    endcase
 
                 4: case(byte_offset[1:0])
-                        3:  data_out = {24'd0,word_out[31:24]};      // lbu
-                        2:  data_out = {24'd0,word_out[23:16]};
-                        1:  data_out = {24'd0,word_out[15:8]};
-                        0:  data_out = {24'd0,word_out[7:0]};
+                        3:  data_out = {24'd0,cache[index][hit_block_index].words[word_offset][31:24]};      // lbu
+                        2:  data_out = {24'd0,cache[index][hit_block_index].words[word_offset][23:16]};
+                        1:  data_out = {24'd0,cache[index][hit_block_index].words[word_offset][15:8]};
+                        0:  data_out = {24'd0,cache[index][hit_block_index].words[word_offset][7:0]};
                    endcase 
 
                 5: case(byte_offset[1:0])
-                        2: data_out = {16'd0,word_out[31:16]};  // lhu
-                        1: data_out = {16'd0,word_out[23:8]};
-                        0: data_out = {16'd0,word_out[15:0]};
+                        2: data_out = {16'd0,cache[index][hit_block_index].words[word_offset][31:16]};  // lhu
+                        1: data_out = {16'd0,cache[index][hit_block_index].words[word_offset][23:8]};
+                        0: data_out = {16'd0,cache[index][hit_block_index].words[word_offset][15:0]};
                    endcase
             endcase
     
@@ -169,14 +169,14 @@ always_ff @(posedge CLK) begin
             0:  // Byte
                 case(byte_offset)
                     0: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][31:8]},data_in[7:0]};
-                    1: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][23:16]},data_in[15:8],{cache[index][hit_block_index].words[word_offset][7:0]}};
-                    2: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][31:24]},data_in[23:16], {cache[index][hit_block_index].words[word_offset][15:0]}};
-                    3: cache[index][hit_block_index].words[word_offset] = {data_in[31:24],{cache[index][hit_block_index].words[word_offset][23:0]}};
+                    1: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][23:16]},data_in[7:0],{cache[index][hit_block_index].words[word_offset][7:0]}};
+                    2: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][31:24]},data_in[7:0], {cache[index][hit_block_index].words[word_offset][15:0]}};
+                    3: cache[index][hit_block_index].words[word_offset] = {data_in[7:0],{cache[index][hit_block_index].words[word_offset][23:0]}};
                 endcase
             1:  // Halfword
                 case(byte_offset)
-                    0: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][31:16]},data_in[15:0]};
-                    2: cache[index][hit_block_index].words[word_offset] = {data_in[31:16],{cache[index][hit_block_index].words[word_offset][15:0]}};
+                    0: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][15:0]},data_in[15:0]};
+                    2: cache[index][hit_block_index].words[word_offset] = {data_in[15:0],{cache[index][hit_block_index].words[word_offset][15:0]}};
                 endcase
 
             2:  // Word

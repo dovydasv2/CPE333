@@ -408,22 +408,65 @@ module OTTER_MCU(input CLK,
     assign IOBUS_ADDR = ex_mem_result;
     assign IOBUS_OUT = ex_mem_rs2;
     assign mem_wb_dout2 = mem_dout2;
+
+    logic [127:0] mem_to_cache, cache_to_mem;
+
+    logic data_hit, dirty, valid, data_miss;
+    logic data_update;
     
+    logic mem_addr_sel;
+    logic [31:0] mem_module_addr, mem_wb_addr;
+    logic new_mem_we, new_mem_re;
+
+    mux2to1 Cache_mem_mux(
+                .in0(mem_addr2),
+                .in1(mem_wb_addr),
+                .sel(mem_addr_sel),
+                .out(mem_module_addr)
+                )
     
     OTTER_mem_byte Mem(
                 .MEM_CLK(CLK),
-                .MEM_ADDR1(pc),
-                .MEM_ADDR2(mem_addr2),
-                .MEM_DIN2(ex_mem_rs2),
-                .MEM_WRITE2(mem_WE2),
-                .MEM_READ1(memRead1 && !stall),
-                .MEM_READ2(mem_RDEN2),
-                .MEM_DOUT1(),
-                .MEM_DOUT2(mem_dout2),
-                .IO_IN(IOBUS_IN),
+                //.MEM_ADDR1(pc),
+                .MEM_ADDR2(mem_module_addr),
+                .MEM_DIN2(cache_to_mem),
+                .MEM_WRITE2(mem_addr_sel),
+                //.MEM_READ1(memRead1 && !stall),
+                .MEM_READ2(~mem_addr_sel),
+                //.MEM_DOUT1(),
+                .MEM_DOUT2(mem_to_cache),
+                //.IO_IN(IOBUS_IN),
+                //.IO_WR(IOBUS_WR),
+                //.MEM_SIZE(size),
+                //.MEM_SIGN(sign)
+                );
+
+
+    // Add a mux controlled by the fsm to have the address going into the memory module be for write-back or update
+
+    logic [31:0] cache_data_out;
+    
+    Data_Cache Data_Cache(
+                .CLK(CLK),
+                .write(mem_WE2),
+                .read(mem_RDEN2),
+                .update(data_update),
+                .RESET(RESET),
+                .address(mem_addr2),
+                .size(size),
+                .sign(sign),
+                .MM_data_in(mem_to_cache),
+                .data_in(ex_mem_rs2),
+                .IO_bus_in(IOBUS_IN),
+                .IO_bus_out(IOBUS_OUT),
                 .IO_WR(IOBUS_WR),
-                .MEM_SIZE(size),
-                .MEM_SIGN(sign)
+                .data_out(cache_data_out),
+                .MM_data_out(cache_to_mem),
+                .mem_wb_addr(mem_wb_addr),
+                .hit(hit),
+                .dirty(dirty),
+                .valid(valid),
+                .miss(data_miss)
                 );
     
     always_ff @(posedge CLK) begin
@@ -431,6 +474,7 @@ module OTTER_MCU(input CLK,
             mem_wb_rd_addr <= ex_mem_rd_addr;
             mem_wb_pc_plus4 <= ex_mem_pc_plus4;
             mem_wb_result <= ex_mem_result;
+            mem_wb_dout2 <= cache_data_out;
             
             mem_wb_rf_wr_sel <= ex_mem_rf_wr_sel;
             mem_wb_regWrite <= ex_mem_regWrite;

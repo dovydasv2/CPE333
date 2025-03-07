@@ -15,7 +15,8 @@ module Data_Cache (
     output logic IO_WR,                  // Flag for IO operations
     output logic [31:0] data_out,     // Output data to CPU 
     output logic [127:0] MM_data_out, // Data to main memory (write-back) 
-    output logic Mem_WE,            // For write-back
+    output logic [31:0] mem_wb_addr,
+    output logic mem_writeback_en,            // For write-back
     output logic hit,                 // Hit signal 
     output logic dirty,               // Dirty bit for replacement policy 
     output logic valid,               // Valid bit status
@@ -52,7 +53,7 @@ end
         logic [25:0] tag;       // Tag for address matching 
         logic valid;            // Valid bit 
         logic dirty;            // Dirty bit 
-        int lru;                // LRU counter 
+        int   lru;              // LRU counter 
     } cache_block_t; 
  
     // Define cache: 4 sets, 4 blocks per set 
@@ -152,6 +153,7 @@ always_ff @(posedge CLK) begin
     IO_WR = 0;
     IO_bus_out = 0;
     IO_out_addr = 0;
+    logic [31:0] output_word;
 
     if (write && address >= 32'h11000000) begin
         IO_WR = 1;
@@ -159,15 +161,23 @@ always_ff @(posedge CLK) begin
         IO_out_addr = address;
     end
     else if (write && hit_internal) begin 
-        cache[index][hit_block_index].dirty <= 1'b1; // Mark block as dirty 
-        cache[index][hit_block_index].words[word_offset] <= data_in; 
-
+        cache[index][hit_block_index].dirty <= 1'b1; // Mark block as dirty             data_in; 
+        output_word = cache[index][hit_block_index].words[word_offset];
 
         // Write specific section (byte, half, word)
-        case(size) begin
+        case(size) 
             0:  // Byte
-
+                case(byte_offset)
+                    0: output_word = {{output_word[31:8]},data_in[7:0]};
+                    1: output_word = {{output_word[23:16]},data_in[15:8],{output_word[7:0]}};
+                    2: output_word = {{output_word[31:24]},data_in[23:16], {output_word[15:0]}};
+                    3: output_word = {data_in[31:24],{output_word[23:0]}};
+                endcase
             1:  // Halfword
+                case(byte_offset)
+                    0: output_word = {{output_word[31:16]},data_in[15:0]};
+                    2: output_word = {data_in[31:16],{output_word[15:0]}};
+                endcase
 
             2:  // Word
                 cache[index][hit_block_index].words[word_offset] <= data_in;
@@ -176,7 +186,7 @@ always_ff @(posedge CLK) begin
                 cache[index][hit_block_index].words[word_offset] <= data_in; // Default to writing a word
         
 
-        end
+        endcase
 
 
     end 
@@ -205,7 +215,8 @@ end
                                cache[index][lru_block_index].words[3]}; 
 
                 cache[index][lru_block_index].dirty = 0; 
-                Mem_WE = 1;
+                mem_wb_addr = {cache[index][lru_block_index].tag, index, 4'b0000};
+                mem_writeback_en = 1;
             end 
  
             // Replace the LRU block with new data 

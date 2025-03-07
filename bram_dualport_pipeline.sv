@@ -30,7 +30,7 @@
     input [31:0] MEM_ADDR1;     //Instruction Memory Port
     input [31:0] MEM_ADDR2;     //Data Memory Port
     input MEM_CLK;
-    input [31:0] MEM_DIN2;
+    input [127:0] MEM_DIN2;
     input MEM_WRITE2;
     input MEM_READ1;
     input MEM_READ2;
@@ -79,19 +79,10 @@
         //PORT 2  //Data
         if(memWrite2)
         begin
-            j=0;
-            for(i=0;i<NUM_COL;i=i+1) begin
+            // Write 4 words at a time since we are using cache
+            for(i=0;i<16;i=i+1) begin
                 if(weA[i]) begin
-                        case(MEM_SIZE)
-                            0: memory[memAddr2][i*COL_WIDTH +: COL_WIDTH] <= MEM_DIN2[7:0]; //MEM_DIN2[(3-i)*COL_WIDTH +: COL_WIDTH];
-                            1: begin 
-                                    memory[memAddr2][i*COL_WIDTH +: COL_WIDTH] <= MEM_DIN2[j*COL_WIDTH +: COL_WIDTH];
-                                    j=j+1;
-                               end
-                            2: memory[memAddr2][i*COL_WIDTH +: COL_WIDTH] <= MEM_DIN2[i*COL_WIDTH +: COL_WIDTH];
-                            3: 
-                            default:  memory[memAddr2][i*COL_WIDTH +: COL_WIDTH] <= MEM_DIN2[i*COL_WIDTH +: COL_WIDTH];
-                        endcase
+                    memory[memAddr2][i*COL_WIDTH +: COL_WIDTH] <= MEM_DIN2[i*COL_WIDTH +: COL_WIDTH];
                 end
             end
          end
@@ -156,10 +147,7 @@
     end
  
     always_comb begin
-        if(saved_mem_addr2 >= 32'h11000000)      
-            MEM_DOUT2 = ioIn_buffer;  
-        else 
-            MEM_DOUT2 = memOut2_sliced;   
+        MEM_DOUT2 = {memory[memAddr2], memory[memAddr2 + 4], memory[memAddr2 + 8], memory[memAddr2 + 12]};   
     end 
 
     always_comb begin

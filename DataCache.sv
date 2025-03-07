@@ -238,7 +238,7 @@ end
  
     // Assign Outputs 
     assign hit = hit_internal; 
-    assign miss = ~hit_internal;
+    assign miss = (~hit_internal && (read || write));
     assign dirty = hit_internal ? cache[index][hit_block_index].dirty : 0; 
     assign valid = hit_internal ? cache[index][hit_block_index].valid : 0; 
  

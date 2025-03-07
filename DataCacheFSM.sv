@@ -6,7 +6,7 @@ module Data_Cache_FSM(
     input RST, 
     output logic update,    // Update signal
     output logic pc_stall,   // Stall signal
-    output mem_addr_sel     // Selects memory adress in MUX based on wb
+    output logic mem_addr_sel     // Selects memory adress in MUX based on wb
                             // 1=wb state, 0=mem read state
 );
 

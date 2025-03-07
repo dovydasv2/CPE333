@@ -106,7 +106,7 @@ end
             data_out = IO_in_buffer;
         end
         else if (read && hit_internal) begin 
-            word_out = cache[index][hit_block_index].words[word_offset]; 
+            assign word_out = cache[index][hit_block_index].words[word_offset]; 
 
             // Slice to have proper output
             case({sign,size})
@@ -162,21 +162,21 @@ always_ff @(posedge CLK) begin
     end
     else if (write && hit_internal) begin 
         cache[index][hit_block_index].dirty <= 1'b1; // Mark block as dirty             data_in; 
-        output_word = cache[index][hit_block_index].words[word_offset];
+        //output_word = cache[index][hit_block_index].words[word_offset];
 
         // Write specific section (byte, half, word)
         case(size) 
             0:  // Byte
                 case(byte_offset)
-                    0: output_word = {{output_word[31:8]},data_in[7:0]};
-                    1: output_word = {{output_word[23:16]},data_in[15:8],{output_word[7:0]}};
-                    2: output_word = {{output_word[31:24]},data_in[23:16], {output_word[15:0]}};
-                    3: output_word = {data_in[31:24],{output_word[23:0]}};
+                    0: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][31:8]},data_in[7:0]};
+                    1: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][23:16]},data_in[15:8],{cache[index][hit_block_index].words[word_offset][7:0]}};
+                    2: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][31:24]},data_in[23:16], {cache[index][hit_block_index].words[word_offset][15:0]}};
+                    3: cache[index][hit_block_index].words[word_offset] = {data_in[31:24],{cache[index][hit_block_index].words[word_offset][23:0]}};
                 endcase
             1:  // Halfword
                 case(byte_offset)
-                    0: output_word = {{output_word[31:16]},data_in[15:0]};
-                    2: output_word = {data_in[31:16],{output_word[15:0]}};
+                    0: cache[index][hit_block_index].words[word_offset] = {{cache[index][hit_block_index].words[word_offset][31:16]},data_in[15:0]};
+                    2: cache[index][hit_block_index].words[word_offset] = {data_in[31:16],{cache[index][hit_block_index].words[word_offset][15:0]}};
                 endcase
 
             2:  // Word

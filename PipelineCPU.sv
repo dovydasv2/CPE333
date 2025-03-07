@@ -393,7 +393,7 @@ module OTTER_MCU(input CLK,
             
             ex_mem_pc_plus4 <= de_ex_pc;
             ex_mem_rd_addr <= de_ex_rd_addr;
-        end else ex_mem_memRDEN2 <= 0;
+        end //else ex_mem_memRDEN2 <= 0;
     end
 
 

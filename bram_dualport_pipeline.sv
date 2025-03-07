@@ -41,7 +41,7 @@
     input [1:0] MEM_SIZE;
     input MEM_SIGN;
     output logic [31:0] MEM_DOUT1;
-    output logic [31:0] MEM_DOUT2;
+    output logic [127:0] MEM_DOUT2;
     output logic IO_WR;
     
     logic saved_mem_sign;
@@ -147,7 +147,7 @@
     end
  
     always_comb begin
-        MEM_DOUT2 = {memory[memAddr2], memory[memAddr2 + 4], memory[memAddr2 + 8], memory[memAddr2 + 12]};   
+        MEM_DOUT2 = {memory[memAddr2], memory[memAddr2 + 1], memory[memAddr2 + 2], memory[memAddr2 + 3]};   
     end 
 
     always_comb begin

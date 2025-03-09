@@ -106,7 +106,7 @@ end
             data_out = IO_in_buffer;
         end
         else if (read && hit_internal) begin 
-            assign word_out = cache[index][hit_block_index].words[word_offset]; 
+             assign word_out = cache[index][hit_block_index].words[word_offset]; 
 
             // Slice to have proper output
             case({sign,size})

@@ -47,10 +47,7 @@ end
             pc_stall=1'b1;  // Stall to get info
             //NS=ST_READ_MEM;
 
-            if(dirty_wb)begin
-                NS=ST_WRITEBACK;  // Write back if dirty
-            end
-            else NS=ST_READ_MEM;  // Else just read mem
+            NS=ST_READ_MEM;  // Else just read mem
         end
         
         else NS=ST_READ_CACHE;
@@ -69,7 +66,8 @@ end
             pc_stall=1'b1;
             update=1'b1; 
             mem_addr_sel=1'b0; // Back to the mem read
-            NS=ST_READ_CACHE;
+            if(dirty_wb) NS = ST_WRITEBACK;
+            else NS = ST_READ_CACHE;
         end
         
         default:NS=ST_READ_CACHE; // Default state
